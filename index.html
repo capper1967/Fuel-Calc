@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Calculate fuel costs for any trip" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FuelCalc" />
+  <link rel="manifest" href="manifest.json" />
+  <title>FUELCALC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --border: #1e1e1e;
+      --accent: #e8f53a;
+      --accent-dim: #b8c22c;
+      --text: #f0f0f0;
+      --muted: #555;
+      --label: #888;
+      --red: #ff4444;
+      --grid: rgba(255,255,255,0.03);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .app {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px;
+      line-height: 1;
+      letter-spacing: 4px;
+      color: var(--accent);
+      text-shadow: 0 0 40px rgba(232,245,58,0.25);
+    }
+
+    .logo span {
+      color: var(--muted);
+    }
+
+    .tagline {
+      font-size: 10px;
+      color: var(--label);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding-bottom: 4px;
+    }
+
+    /* ── SECTION LABELS ── */
+    .section-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── INPUTS ── */
+    .inputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .field {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 12px 14px 10px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .field:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), inset 0 0 24px rgba(232,245,58,0.04);
+    }
+
+    .field label {
+      display: block;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--label);
+      margin-bottom: 6px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .field input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      width: 100%;
+      min-width: 0;
+      -moz-appearance: textfield;
+    }
+
+    .field input::-webkit-outer-spin-button,
+    .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    .field input::placeholder { color: var(--muted); }
+
+    .unit {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── CALCULATE BUTTON ── */
+    .calc-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      padding: 16px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 4px;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.08s;
+      margin-bottom: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .calc-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.15);
+      transform: translateX(-100%);
+      transition: transform 0.3s;
+    }
+    .calc-btn:hover::after { transform: translateX(0); }
+    .calc-btn:active { transform: scale(0.98); }
+
+    .reset-btn {
+      width: 100%;
+      background: transparent;
+      color: var(--label);
+      border: 1px solid var(--border);
+      padding: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: 28px;
+    }
+    .reset-btn:hover { color: var(--red); border-color: var(--red); }
+
+    /* ── RESULTS ── */
+    .results {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+    }
+    .results.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      margin-bottom: 2px;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-card.highlight {
+      background: var(--accent);
+      border-color: var(--accent);
+      grid-column: span 2;
+    }
+
+    .result-card.highlight .result-label { color: rgba(0,0,0,0.55); }
+    .result-card.highlight .result-value { color: #0a0a0a; }
+    .result-card.highlight .result-unit { color: rgba(0,0,0,0.5); }
+
+    .result-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--label);
+      margin-bottom: 8px;
+    }
+
+    .result-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 42px;
+      line-height: 1;
+      color: var(--text);
+      letter-spacing: 2px;
+    }
+
+    .result-card.highlight .result-value { font-size: 54px; }
+
+    .result-unit {
+      font-size: 11px;
+      color: var(--label);
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    .corner-mark {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      opacity: 0.4;
+    }
+
+    .result-card.highlight .corner-mark {
+      background: rgba(0,0,0,0.25);
+      opacity: 1;
+    }
+
+    /* ── ERROR ── */
+    .error-msg {
+      font-size: 11px;
+      color: var(--red);
+      letter-spacing: 1px;
+      padding: 10px 14px;
+      border: 1px solid var(--red);
+      background: rgba(255,68,68,0.06);
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* ── INSTALL BANNER ── */
+    #install-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a1a;
+      border: 1px solid var(--accent);
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      gap: 12px;
+    }
+    #install-banner.show { display: flex; }
+    #install-banner p { font-size: 11px; color: var(--label); letter-spacing: 1px; }
+    #install-banner p strong { color: var(--accent); }
+    #install-btn {
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      padding: 8px 14px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 14px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #dismiss-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 2px;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Install banner -->
+  <div id="install-banner">
+    <p><strong>Add to Home Screen</strong> for offline access</p>
+    <button id="install-btn">INSTALL</button>
+    <button id="dismiss-btn">✕</button>
+  </div>
+
+  <header>
+    <div class="logo">FUEL<span>/</span>CALC</div>
+    <div class="tagline">Trip cost estimator</div>
+  </header>
+
+  <div class="section-label">Fuel data</div>
+
+  <div class="inputs-grid">
+    <div class="field">
+      <label>Fuel Price</label>
+      <div class="input-row">
+        <input type="number" id="fuelPrice" placeholder="1.85" min="0" step="0.001" inputmode="decimal" />
+        <span class="unit">$/L</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Litres Added</label>
+      <div class="input-row">
+        <input type="number" id="litresFilled" placeholder="45" min="0" step="0.1" inputmode="decimal" />
+        <span class="unit">L</span>
+      </div>
+    </div>
+    <div class="field" style="grid-column: span 2;">
+      <label>Distance Between Fill-Ups</label>
+      <div class="input-row">
+        <input type="number" id="kmsBetweenFillups" placeholder="500" min="0" step="1" inputmode="decimal" />
+        <span class="unit">KM</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Trip</div>
+
+  <div class="inputs-grid" style="grid-template-columns: 1fr; margin-bottom: 20px;">
+    <div class="field">
+      <label>Trip Length</label>
+      <div class="input-row">
+        <input type="number" id="tripLength" placeholder="1200" min="0" step="1" inputmode="decimal" />
+        <span class="unit">KM</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-msg" id="errorMsg">— Please fill in all fields with valid values</div>
+
+  <button class="calc-btn" id="calcBtn">CALCULATE</button>
+  <button class="reset-btn" id="resetBtn">RESET ALL</button>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="section-label">Results</div>
+
+    <div style="margin-bottom: 2px;">
+      <div class="result-card highlight">
+        <div class="corner-mark"></div>
+        <div class="result-label">Total Trip Cost</div>
+        <div class="result-value" id="tripCost">—</div>
+        <div class="result-unit">DOLLARS</div>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card">
+        <div class="corner-mark"></div>
+        <div class="result-label">Cost per KM</div>
+        <div class="result-value" id="costPerKm">—</div>
+        <div class="result-unit">¢/KM</div>
+      </div>
+      <div class="result-card">
+        <div class="corner-mark"></div>
+        <div class="result-label">KM per Litre</div>
+        <div class="result-value" id="kmPerL">—</div>
+        <div class="result-unit">KM/L</div>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card">
+        <div class="corner-mark"></div>
+        <div class="result-label">Fuel Economy</div>
+        <div class="result-value" id="mpg">—</div>
+        <div class="result-unit">MPG (IMP)</div>
+      </div>
+      <div class="result-card">
+        <div class="corner-mark"></div>
+        <div class="result-label">Litres Used</div>
+        <div class="result-value" id="litresUsed">—</div>
+        <div class="result-unit">LITRES</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>© FuelCalc &nbsp;·&nbsp; All calculations in metric</footer>
+</div>
+
+<script>
+  // ── PWA SERVICE WORKER ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
+  // ── INSTALL PROMPT ──
+  let deferredPrompt = null;
+  const banner = document.getElementById('install-banner');
+  const installBtn = document.getElementById('install-btn');
+  const dismissBtn = document.getElementById('dismiss-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    banner.classList.add('show');
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    banner.classList.remove('show');
+  });
+
+  dismissBtn.addEventListener('click', () => banner.classList.remove('show'));
+
+  // ── CALCULATOR ──
+  const fields = {
+    fuelPrice: document.getElementById('fuelPrice'),
+    litresFilled: document.getElementById('litresFilled'),
+    kmsBetweenFillups: document.getElementById('kmsBetweenFillups'),
+    tripLength: document.getElementById('tripLength'),
+  };
+
+  const out = {
+    tripCost: document.getElementById('tripCost'),
+    costPerKm: document.getElementById('costPerKm'),
+    kmPerL: document.getElementById('kmPerL'),
+    mpg: document.getElementById('mpg'),
+    litresUsed: document.getElementById('litresUsed'),
+  };
+
+  const results = document.getElementById('results');
+  const errorMsg = document.getElementById('errorMsg');
+
+  function calculate() {
+    const price = parseFloat(fields.fuelPrice.value);
+    const litres = parseFloat(fields.litresFilled.value);
+    const kmsFill = parseFloat(fields.kmsBetweenFillups.value);
+    const tripKm = parseFloat(fields.tripLength.value);
+
+    if ([price, litres, kmsFill, tripKm].some(v => isNaN(v) || v <= 0)) {
+      errorMsg.classList.add('visible');
+      results.classList.remove('visible');
+      return;
+    }
+
+    errorMsg.classList.remove('visible');
+
+    // Core calculations
+    const lPer100km = (litres / kmsFill) * 100;         // L/100km (used for MPG conversion)
+    const kmPerL = kmsFill / litres;                     // km/L
+    const costPerKm = (price * litres) / kmsFill;        // $/km
+    const litresUsed = (lPer100km / 100) * tripKm;       // total litres for trip
+    const tripCost = costPerKm * tripKm;                  // total $
+
+    // Convert to imperial MPG
+    // 1 L/100km → 282.481 / (L/100km) = imperial MPG
+    const mpgImp = 282.481 / lPer100km;
+
+    // Format outputs
+    out.tripCost.textContent = '$' + tripCost.toFixed(2);
+    out.costPerKm.textContent = (costPerKm * 100).toFixed(1); // in cents
+    out.kmPerL.textContent = kmPerL.toFixed(2);
+    out.mpg.textContent = mpgImp.toFixed(1);
+    out.litresUsed.textContent = litresUsed.toFixed(1);
+
+    results.classList.add('visible');
+
+    // Scroll to results on mobile
+    setTimeout(() => {
+      results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+  }
+
+  function reset() {
+    Object.values(fields).forEach(f => f.value = '');
+    results.classList.remove('visible');
+    errorMsg.classList.remove('visible');
+    fields.fuelPrice.focus();
+  }
+
+  document.getElementById('calcBtn').addEventListener('click', calculate);
+  document.getElementById('resetBtn').addEventListener('click', reset);
+
+  // Allow Enter key to trigger calculation
+  document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+  });
+</script>
+</body>
+</html>
